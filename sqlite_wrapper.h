@@ -3,10 +3,9 @@
 
 #include <string>
 #include <unordered_map>
-#include <map>
 #include <sqlite3.h>
 #include <iostream>
-#include <any>
+#include <variant>
 #include <vector>
 
 class SqliteWrapper {
@@ -14,15 +13,19 @@ public:
     const char * db_name;
     std::unordered_map<std::string, std::string> table_entry_headers_nodtype;
     std::unordered_map<std::string, std::string> table_entry_headers_dtype;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> table2colname2dtype;
+    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> table2ordered_colname_dtype;
     sqlite3 * conx;
     bool debug = true;
 
     SqliteWrapper(const char * db_name);
 
+    void CloseDB();
+
     void CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> column_dtype_pairs);
 
-    std::unordered_map<std::string, std::any> RandomBatchQuery(std::string table_name, std::vector<std::string> columns, int batch_size);
+    int BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size);
+
+    std::vector<std::variant<int*, double*, std::string*>> RandomBatchQuery(std::string table_name, std::vector<std::string> columns, int batch_size);
 };
 
 

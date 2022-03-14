@@ -5,17 +5,19 @@ SqliteWrapper::SqliteWrapper(const char * db_name){
     sqlite3_open(db_name, &conx);
 }
 
+void SqliteWrapper::CloseDB() {
+    sqlite3_close(this->conx);
+}
+
 void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> column_dtype_pairs){
     // Creating the entry header strings from dtype mapping
     std::string header_dtype = "(";
     std::string header_nodtype = "(";
 
-    std::unordered_map<std::string, std::string> column2dtype;
     for (auto const& pair : column_dtype_pairs){
         // pair:  column_name , dtype
         header_dtype.append(pair.first + " " + pair.second + ", ");
-        header_nodtype.append(pair.first + ", ");
-        column2dtype.insert(pair);
+        header_nodtype.append("@" + pair.first + ", ");
     }
 
     header_dtype = header_dtype.substr(0, header_dtype.size() - 2) + ")";
@@ -23,7 +25,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
 
     this->table_entry_headers_dtype.insert({table_name, header_dtype});
     this->table_entry_headers_nodtype.insert({table_name, header_nodtype});
-    this->table2colname2dtype.insert({table_name, column2dtype});
+    this->table2ordered_colname_dtype.insert({table_name, column_dtype_pairs});
 
     if (this->debug){
         std::cout << "Creating Table with following headers:" << std::endl;
@@ -31,7 +33,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
         std::cout << "\t\tNo Dtype  " << header_nodtype << std::endl;
     }
 
-    std::string create_table = "CREATE TABLE " + table_name + header_dtype + ";";
+    std::string create_table = "CREATE TABLE IF NOT EXISTS " + table_name + header_dtype + ";";
 
     char* messageError;
     int exit = sqlite3_exec(this->conx, create_table.c_str(), NULL, 0, &messageError);
@@ -40,9 +42,57 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
         std::cerr << "Error Creating Table" << std::endl;
         sqlite3_free(messageError);
     }
-    sqlite3_close(this->conx);
 
     return;
 }
 
+
+int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size){
+
+
+
+    std::vector<int> int_types;
+    for (auto & varnt : insert_arrays){
+        int_types.push_back(varnt.index());
+    }
+
+    sqlite3_stmt * statement;
+    const char * tail = 0;
+    char * sErrMsg = 0;
+    sqlite3_exec(this->conx, "PRAGMA synchronous = OFF", NULL, NULL, &sErrMsg);
+
+    std::string sqlstr = "INSERT OR IGNORE INTO " + table_name + " VALUES " + this->table_entry_headers_nodtype[table_name];
+    sqlite3_prepare_v2(this->conx, sqlstr.c_str(), 256, &statement, &tail);
+
+
+    sqlite3_exec(this->conx, "BEGIN TRANSACTION", NULL, NULL, &sErrMsg);
+
+    for (int i = 0; i < batch_size; i++){
+
+        for (int j = 0; j < insert_arrays.size(); j++){
+            int int_type = int_types[j];
+            if (int_type == 0){
+                auto v = std::get<0>(insert_arrays[j])[i];
+                sqlite3_bind_int(statement, j+1, v);
+            }
+            else if (int_type == 1){
+                auto v = std::get<1>(insert_arrays[j])[i];
+                sqlite3_bind_double(statement, j+1, v);
+            }
+            else if (int_type == 2){
+                auto v = std::get<2>(insert_arrays[j])[i];
+                sqlite3_bind_text(statement, j+1, v.c_str(), -1, SQLITE_TRANSIENT);
+            }
+
+        }
+
+        sqlite3_step(statement);
+        sqlite3_clear_bindings(statement);
+        sqlite3_reset(statement);
+    }
+
+    sqlite3_exec(this->conx, "END TRANSACTION", NULL, NULL, &sErrMsg);
+    sqlite3_finalize(statement);
+    return 0;
+}
 
