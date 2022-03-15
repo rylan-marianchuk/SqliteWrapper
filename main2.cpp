@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <variant>
+#include <cmath>
 
 int main(){
     SqliteWrapper sqlwrap = SqliteWrapper("phony.db");
@@ -19,22 +20,21 @@ int main(){
     std::string euids[5] = {"e987", "e121", "e813", "e649", "e447"};
     int leads[5] = {0, 1, 2, 3, 4};
     int nochange20[5] = {0, 0, 1, 0, 0};
-    double cl[5] =
+    float cl[5] =
             {12780.905273,
             11180.522461,
             9742.398438,
             8122.770508,
             12945.327148};
 
-    double * CL;
-    double histent[5] =
+    float histent[5] =
             {0.812686,
             0.469909,
             0.631023,
             0.528284,
             0.840711};
 
-    std::vector<std::variant<int*, double*, std::string *>> insert_arrays {
+    std::vector<std::variant<int*, float*, std::string*>> insert_arrays {
             euids,
             leads,
             nochange20,
@@ -46,6 +46,11 @@ int main(){
 
 
     sqlwrap.CloseDB();
+
+    float f1 = 1.0f;
+    float f2 = 1.0f;
+    double result = std::sqrt(f1+f2);
+    std::cout << typeid(0.0d).name() << std::endl;
     return 0;
 }
 

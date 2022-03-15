@@ -47,7 +47,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
 }
 
 
-int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size){
+int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, float*, std::string*>> insert_arrays, int batch_size){
 
 
 
@@ -83,7 +83,6 @@ int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<
                 auto v = std::get<2>(insert_arrays[j])[i];
                 sqlite3_bind_text(statement, j+1, v.c_str(), -1, SQLITE_TRANSIENT);
             }
-
         }
 
         sqlite3_step(statement);
@@ -96,3 +95,49 @@ int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<
     return 0;
 }
 
+std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatchQuery(
+        std::string table_name,
+        std::string primary_key_name,
+        std::vector<std::pair<std::string, std::string>> columns,
+        int batch_size){
+
+    std::vector<std::variant<int*, double*, std::string*>> results;
+
+    for (auto & column_dtype_pair: columns){
+        if (column_dtype_pair.second == "INT"){
+            int * arr_i =
+            results.push_back();
+        }
+        else if (column_dtype_pair.second == "REAL"){
+            results.push_back(new double[batch_size]);
+        }
+        else if (column_dtype_pair.second == "TEXT"){
+            results.push_back(new std::string[batch_size]);
+        }
+
+    }
+
+    for (int i = 0; i < results.size(); i++){
+        std::cout << results[i] << typeid(results[i]).name() << std::endl;
+    }
+
+    return results;
+
+
+    int rc;
+    sqlite3_stmt * stmt;
+    std::string sql_stmt = "SELECT * FROM " + table_name + " WHERE " + primary_key_name + " IN (SELECT " +
+            primary_key_name + " FROM " + table_name + " ORDER BY RANDOM() LIMIT " + std::to_string(batch_size) + ");";
+
+    rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK){
+        //std::cout << "Error in RandomBatchQuery(): " << sqlite3_errmsg(this->conx);
+        std::cout << "Error in RandomBatchQuery(): ";
+        return results;
+    }
+
+
+
+    return results;
+}

@@ -23,9 +23,9 @@ public:
 
     void CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> column_dtype_pairs);
 
-    int BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size);
+    int BatchInsert(std::string table_name, std::vector<std::variant<int*, float*, std::string*>> insert_arrays, int batch_size);
 
-    std::vector<std::variant<int*, double*, std::string*>> RandomBatchQuery(std::string table_name, std::vector<std::string> columns, int batch_size);
+    std::vector<std::variant<int*, double*, std::string*>> RandomBatchQuery(std::string table_name, std::string primary_key_name, std::vector<std::pair<std::string, std::string>> columns, int batch_size);
 };
 
 
