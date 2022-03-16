@@ -47,7 +47,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
 }
 
 
-int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, float*, std::string*>> insert_arrays, int batch_size){
+int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size){
 
 
 
@@ -103,30 +103,46 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
 
     std::vector<std::variant<int*, double*, std::string*>> results;
 
-    for (auto & column_dtype_pair: columns){
+    std::string select_cols;
+
+    for (auto & column_dtype_pair : columns){
         if (column_dtype_pair.second == "INT"){
-            int * arr_i =
-            results.push_back();
+            int * intP = new int[batch_size];
+            results.push_back(intP);
         }
         else if (column_dtype_pair.second == "REAL"){
-            results.push_back(new double[batch_size]);
+            double * dblP = new double[batch_size];
+            results.push_back(dblP);
         }
         else if (column_dtype_pair.second == "TEXT"){
-            results.push_back(new std::string[batch_size]);
+            std::string * strP = new std::string[batch_size];
+            results.push_back(strP);
         }
-
+        select_cols.append(column_dtype_pair.first + ", ");
     }
+    select_cols = select_cols.substr(0, select_cols.size() - 2);
 
-    for (int i = 0; i < results.size(); i++){
-        std::cout << results[i] << typeid(results[i]).name() << std::endl;
+    if (this->debug){
+        std::cout << select_cols << std::endl;
+
+        for (int i = 0; i < results.size(); i++){
+            switch(results[i].index()){
+                case 0:
+                    std::cout << std::get<0>(results[i]) << "  " << typeid(std::get<0>(results[i])).name() << std::endl;
+                    break;
+                case 1:
+                    std::cout << std::get<1>(results[i]) << "  " << typeid(std::get<1>(results[i])).name() << std::endl;
+                    break;
+                case 2:
+                    std::cout << std::get<2>(results[i]) << "  " << typeid(std::get<2>(results[i])).name() << std::endl;
+                    break;
+            }
+        }
     }
-
-    return results;
-
 
     int rc;
     sqlite3_stmt * stmt;
-    std::string sql_stmt = "SELECT * FROM " + table_name + " WHERE " + primary_key_name + " IN (SELECT " +
+    std::string sql_stmt = "SELECT " + select_cols + " FROM " + table_name + " WHERE " + primary_key_name + " IN (SELECT " +
             primary_key_name + " FROM " + table_name + " ORDER BY RANDOM() LIMIT " + std::to_string(batch_size) + ");";
 
     rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
@@ -136,8 +152,29 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
         std::cout << "Error in RandomBatchQuery(): ";
         return results;
     }
+    int i = 0;
 
+    while( (rc = sqlite3_step(stmt)) == SQLITE_ROW){
+        for (int j = 0; j < columns.size(); j++){
+            if (columns[j].second == "INT"){
+                std::get<0>(results[j])[i] = sqlite3_column_int(stmt, j);
+            }
+            else if (columns[j].second == "REAL"){
+                std::get<1>(results[j])[i] = sqlite3_column_double(stmt, j);
+            }
+            else if (columns[j].second == "TEXT"){
+                const unsigned char * uchar_entry = sqlite3_column_text(stmt, j);
+                std::string str_entry(reinterpret_cast< char const* >(uchar_entry));
+                std::get<2>(results[j])[i] = str_entry;
+            }
+        }
+        i++;
+    }
 
+    if (rc != SQLITE_DONE) {
+        std::cout << "Error in RandomBatchQuery(): ";
+    }
+    sqlite3_finalize(stmt);
 
     return results;
 }
