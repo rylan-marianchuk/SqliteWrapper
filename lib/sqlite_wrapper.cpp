@@ -1,4 +1,4 @@
-#include "sqlite_wrapper.h"
+#include "../include/sqlite_wrapper.h"
 
 SqliteWrapper::SqliteWrapper(const char * db_name){
     this->db_name = db_name;

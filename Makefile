@@ -1,8 +1,8 @@
-all:
-	g++ -std=c++17 -c sqlite_wrapper.cpp -o sqlitewrap.o
+all: lib/sqlite_wrapper.cpp
+	g++ -std=c++17 -c lib/sqlite_wrapper.cpp -o sqlitewrap.o
 	g++ -std=c++17 main2.cpp sqlitewrap.o -lsqlite3
+	mv *.o build/
 
 clean:
-	rm *.o
+	rm build/*.o
 	rm a.out
-	rm *.db
