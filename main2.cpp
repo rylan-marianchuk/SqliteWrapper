@@ -6,7 +6,7 @@
 #include <cmath>
 
 int main(){
-    SqliteWrapper sqlwrap = SqliteWrapper("/home/rylan/CLionProjects/preprocess/wvfmWrapped.db");
+    SqliteWrapper sqlwrap = SqliteWrapper("/home/rylan/CLionProjects/multiTH-DB-Clust/database/wvfmWrapped.db");
     /*
     std::vector<std::pair<std::string, std::string>> column2dtype {
             {"EUID", "TEXT PRIMARY KEY"},
@@ -44,6 +44,7 @@ int main(){
 
     sqlwrap.BatchInsert("waveform_features", insert_arrays, 5);
 */
+    std::cout << sqlwrap.GetNumRows("wvfm_params");
     std::vector<std::pair<std::string, std::string>> get_cols {
             {"EUID", "TEXT"},
             {"LEAD", "INT"},
@@ -51,7 +52,11 @@ int main(){
             {"HISTENTROPY", "REAL"},
     };
 
-    std::vector<std::variant<int*, double*, std::string*>> results_of_query = sqlwrap.RandomBatchQuery("wvfm_params", "EUID", get_cols, 300);
+    std::vector<std::string> restrictions {
+        "LEAD=5"
+    };
+
+    std::vector<std::variant<int*, double*, std::string*>> results_of_query = sqlwrap.RandomBatchQuery("wvfm_params", "EUID", get_cols, restrictions, 300);
 
     for (int i = 0; i < 300; i++){
         std::cout << "Entry: " << std::get<2>(results_of_query[0])[i] << " " << std::get<0>(results_of_query[1])[i] << " " << std::get<1>(results_of_query[2])[i] << " " << std::get<1>(results_of_query[3])[i] << std::endl;

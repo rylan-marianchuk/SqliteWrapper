@@ -1,8 +1,11 @@
 #include "../include/sqlite_wrapper.h"
 
-SqliteWrapper::SqliteWrapper(const char * db_name){
-    this->db_name = db_name;
-    sqlite3_open(db_name, &conx);
+SqliteWrapper::SqliteWrapper(const char * path_to_db){
+    this->path_to_db = path_to_db;
+    int can_open = sqlite3_open(path_to_db, &conx);
+    if (can_open != SQLITE_OK){
+        throw std::invalid_argument("The path given to open Sqlite DB cannot be opened.");
+    }
 }
 
 void SqliteWrapper::CloseDB() {
@@ -99,6 +102,7 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
         std::string table_name,
         std::string primary_key_name,
         std::vector<std::pair<std::string, std::string>> columns,
+        std::vector<std::string> restrictions,
         int batch_size){
 
     std::vector<std::variant<int*, double*, std::string*>> results;
@@ -143,13 +147,26 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
     int rc;
     sqlite3_stmt * stmt;
     std::string sql_stmt = "SELECT " + select_cols + " FROM " + table_name + " WHERE " + primary_key_name + " IN (SELECT " +
-            primary_key_name + " FROM " + table_name + " ORDER BY RANDOM() LIMIT " + std::to_string(batch_size) + ");";
+            primary_key_name + " FROM " + table_name;
+
+    if (!restrictions.empty()){
+        sql_stmt += " WHERE ";
+        for (int i = 0; i < restrictions.size(); i++){
+            if (i > 0){
+                sql_stmt += " AND ";
+            }
+            sql_stmt += restrictions[i];
+        }
+    }
+
+    sql_stmt += " ORDER BY RANDOM() LIMIT " + std::to_string(batch_size) + ");";
+
+    std::cout << sql_stmt <<std::endl;
 
     rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
 
     if (rc != SQLITE_OK){
-        //std::cout << "Error in RandomBatchQuery(): " << sqlite3_errmsg(this->conx);
-        std::cout << "Error in RandomBatchQuery(): ";
+        std::cout << "Error in RandomBatchQuery() preparing the statement: " << sqlite3_errmsg(this->conx) << std::endl;
         return results;
     }
     int i = 0;
@@ -172,9 +189,28 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
     }
 
     if (rc != SQLITE_DONE) {
-        std::cout << "Error in RandomBatchQuery(): ";
+        std::cout << "Error in RandomBatchQuery() not done " << sqlite3_errmsg(this->conx) << std::endl;
     }
     sqlite3_finalize(stmt);
 
     return results;
 }
+
+
+unsigned long SqliteWrapper::GetNumRows(std::string table_name) {
+    int rc;
+    sqlite3_stmt * stmt;
+    std::string sql_stmt = "SELECT COUNT(*) FROM " + table_name + ";";
+
+    rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK){
+        //std::cout << "Error in RandomBatchQuery(): " << sqlite3_errmsg(this->conx);
+        std::cout << "Error in GetNumRows()" << std::endl;
+        return -1;
+    }
+    rc = sqlite3_step(stmt);
+    return (unsigned long) sqlite3_column_int64(stmt, 0);
+}
+
+
