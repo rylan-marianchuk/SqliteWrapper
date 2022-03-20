@@ -1,8 +1,11 @@
 #include "../include/sqlite_wrapper.h"
 
-SqliteWrapper::SqliteWrapper(const char * db_name){
-    this->db_name = db_name;
-    sqlite3_open(db_name, &conx);
+SqliteWrapper::SqliteWrapper(const char * path_to_db){
+    this->path_to_db = path_to_db;
+    int can_open = sqlite3_open(path_to_db, &conx);
+    if (can_open != SQLITE_OK){
+        throw std::invalid_argument("The path given to open Sqlite DB cannot be opened.");
+    }
 }
 
 void SqliteWrapper::CloseDB() {
@@ -177,4 +180,20 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
     sqlite3_finalize(stmt);
 
     return results;
+}
+
+int SqliteWrapper::GetNumRows(std::string table_name) {
+    int rc;
+    sqlite3_stmt * stmt;
+    std::string sql_stmt = "SELECT COUNT(*) FROM " + table_name + ";";
+
+    rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK){
+        //std::cout << "Error in RandomBatchQuery(): " << sqlite3_errmsg(this->conx);
+        std::cout << "Error in GetNumRows()" << std::endl;
+        return -1;
+    }
+    rc = sqlite3_step(stmt);
+    return sqlite3_column_int(stmt, 0);
 }
