@@ -12,7 +12,7 @@ void SqliteWrapper::CloseDB() {
     sqlite3_close(this->conx);
 }
 
-void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> column_dtype_pairs){
+void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> & column_dtype_pairs){
     // Creating the entry header strings from dtype mapping
     std::string header_dtype = "(";
     std::string header_nodtype = "(";
@@ -30,12 +30,6 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
     this->table_entry_headers_nodtype.insert({table_name, header_nodtype});
     this->table2ordered_colname_dtype.insert({table_name, column_dtype_pairs});
 
-    if (this->debug){
-        std::cout << "Creating Table with following headers:" << std::endl;
-        std::cout << "\t\tDtype     " << header_dtype << std::endl;
-        std::cout << "\t\tNo Dtype  " << header_nodtype << std::endl;
-    }
-
     std::string create_table = "CREATE TABLE IF NOT EXISTS " + table_name + header_dtype + ";";
 
     char* messageError;
@@ -50,9 +44,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
 }
 
 
-int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size){
-
-
+int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> & insert_arrays, int batch_size){
 
     std::vector<int> int_types;
     for (auto & varnt : insert_arrays){
@@ -98,11 +90,49 @@ int SqliteWrapper::BatchInsert(std::string table_name, std::vector<std::variant<
     return 0;
 }
 
+void SqliteWrapper::BatchRemoveByKey(std::string table_name, std::string primary_key_name, std::variant<int*, double*, std::string*> remove_keys, int remove_size){
+
+    sqlite3_stmt * statement;
+    const char * tail = 0;
+    char * sErrMsg = 0;
+    //sqlite3_exec(this->conx, "PRAGMA synchronous = OFF", NULL, NULL, &sErrMsg);
+    std::string sqlstr = "DELETE FROM " + table_name + " WHERE " + primary_key_name + "=" + "@key";
+    sqlite3_prepare_v2(this->conx, sqlstr.c_str(), 256, &statement, &tail);
+
+
+    sqlite3_exec(this->conx, "BEGIN TRANSACTION", NULL, NULL, &sErrMsg);
+
+    for (int i = 0; i < remove_size; i++){
+
+        int int_type = remove_keys.index();
+        if (int_type == 0){
+            auto v = std::get<0>(remove_keys)[i];
+            sqlite3_bind_int(statement, 1, v);
+        }
+        else if (int_type == 1){
+            auto v = std::get<1>(remove_keys)[i];
+            sqlite3_bind_double(statement, 1, v);
+        }
+        else if (int_type == 2){
+            auto v = std::get<2>(remove_keys)[i];
+            sqlite3_bind_text(statement, 1, v.c_str(), -1, SQLITE_TRANSIENT);
+        }
+        sqlite3_step(statement);
+        sqlite3_clear_bindings(statement);
+        sqlite3_reset(statement);
+    }
+
+    sqlite3_exec(this->conx, "END TRANSACTION", NULL, NULL, &sErrMsg);
+    sqlite3_finalize(statement);
+    return;
+}
+
+
 std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatchQuery(
         std::string table_name,
         std::string primary_key_name,
-        std::vector<std::pair<std::string, std::string>> columns,
-        std::vector<std::string> restrictions,
+        std::vector<std::pair<std::string, std::string>> & columns,
+        std::vector<std::string> & restrictions,
         int batch_size){
 
     std::vector<std::variant<int*, double*, std::string*>> results;
@@ -126,24 +156,6 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
     }
     select_cols = select_cols.substr(0, select_cols.size() - 2);
 
-    if (this->debug){
-        std::cout << select_cols << std::endl;
-
-        for (int i = 0; i < results.size(); i++){
-            switch(results[i].index()){
-                case 0:
-                    std::cout << std::get<0>(results[i]) << "  " << typeid(std::get<0>(results[i])).name() << std::endl;
-                    break;
-                case 1:
-                    std::cout << std::get<1>(results[i]) << "  " << typeid(std::get<1>(results[i])).name() << std::endl;
-                    break;
-                case 2:
-                    std::cout << std::get<2>(results[i]) << "  " << typeid(std::get<2>(results[i])).name() << std::endl;
-                    break;
-            }
-        }
-    }
-
     int rc;
     sqlite3_stmt * stmt;
     std::string sql_stmt = "SELECT " + select_cols + " FROM " + table_name + " WHERE " + primary_key_name + " IN (SELECT " +
@@ -160,8 +172,6 @@ std::vector<std::variant<int*, double*, std::string*>> SqliteWrapper::RandomBatc
     }
 
     sql_stmt += " ORDER BY RANDOM() LIMIT " + std::to_string(batch_size) + ");";
-
-    std::cout << sql_stmt <<std::endl;
 
     rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
 
@@ -205,8 +215,7 @@ unsigned long SqliteWrapper::GetNumRows(std::string table_name) {
     rc = sqlite3_prepare_v2(this->conx, sql_stmt.c_str(), -1, &stmt, NULL);
 
     if (rc != SQLITE_OK){
-        //std::cout << "Error in RandomBatchQuery(): " << sqlite3_errmsg(this->conx);
-        std::cout << "Error in GetNumRows()" << std::endl;
+        std::cout << "Error in GetNumRows():  " << sqlite3_errmsg(this->conx) << std::endl;
         return -1;
     }
     rc = sqlite3_step(stmt);

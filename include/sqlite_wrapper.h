@@ -21,14 +21,16 @@ public:
 
     void CloseDB();
 
-    void CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> column_dtype_pairs);
+    void CreateTable(std::string table_name, std::vector<std::pair<std::string, std::string>> & column_dtype_pairs);
 
-    int BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> insert_arrays, int batch_size);
+    int BatchInsert(std::string table_name, std::vector<std::variant<int*, double*, std::string*>> & insert_arrays, int batch_size);
+
+    void BatchRemoveByKey(std::string table_name, std::string primary_key_name, std::variant<int*, double*, std::string*> remove_keys, int remove_size);
 
     std::vector<std::variant<int*, double*, std::string*>> RandomBatchQuery(std::string table_name,
                                                                             std::string primary_key_name,
-                                                                            std::vector<std::pair<std::string, std::string>> columns,
-                                                                            std::vector<std::string> restrictions,
+                                                                            std::vector<std::pair<std::string, std::string>> & columns,
+                                                                            std::vector<std::string> & restrictions,
                                                                             int batch_size);
 
     unsigned long GetNumRows(std::string table_name);

@@ -6,8 +6,8 @@
 #include <cmath>
 
 int main(){
-    SqliteWrapper sqlwrap = SqliteWrapper("/home/rylan/CLionProjects/multiTH-DB-Clust/database/wvfmWrapped.db");
-    /*
+    SqliteWrapper sqlwrap = SqliteWrapper("./TEST.db");
+
     std::vector<std::pair<std::string, std::string>> column2dtype {
             {"EUID", "TEXT PRIMARY KEY"},
             {"LEAD", "INT"},
@@ -43,7 +43,8 @@ int main(){
     };
 
     sqlwrap.BatchInsert("waveform_features", insert_arrays, 5);
-*/
+
+    /*
     std::cout << sqlwrap.GetNumRows("wvfm_params");
     std::vector<std::pair<std::string, std::string>> get_cols {
             {"EUID", "TEXT"},
@@ -61,7 +62,14 @@ int main(){
     for (int i = 0; i < 300; i++){
         std::cout << "Entry: " << std::get<2>(results_of_query[0])[i] << " " << std::get<0>(results_of_query[1])[i] << " " << std::get<1>(results_of_query[2])[i] << " " << std::get<1>(results_of_query[3])[i] << std::endl;
     }
+    */
 
+    std::string * to_remove = new std::string [3] {
+            "e987",
+            "e121",
+            "e813"
+    };
+    sqlwrap.BatchRemoveByKey("waveform_features", "EUID", to_remove, 3);
     sqlwrap.CloseDB();
 
     return 0;
