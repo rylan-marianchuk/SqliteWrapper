@@ -10,14 +10,14 @@
 
 class SqliteWrapper {
 public:
-    const char * path_to_db;
+    std::string path_to_db;
     std::unordered_map<std::string, std::string> table_entry_headers_nodtype;
     std::unordered_map<std::string, std::string> table_entry_headers_dtype;
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> table2ordered_colname_dtype;
     sqlite3 * conx;
     bool debug = true;
 
-    SqliteWrapper(const char * db_name);
+    SqliteWrapper(std::string db_name);
 
     void CloseDB();
 

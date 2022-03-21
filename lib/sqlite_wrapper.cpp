@@ -1,8 +1,8 @@
 #include "../include/sqlite_wrapper.h"
 
-SqliteWrapper::SqliteWrapper(const char * path_to_db){
+SqliteWrapper::SqliteWrapper(std::string path_to_db){
     this->path_to_db = path_to_db;
-    int can_open = sqlite3_open(path_to_db, &conx);
+    int can_open = sqlite3_open(path_to_db.c_str(), &conx);
     if (can_open != SQLITE_OK){
         throw std::invalid_argument("The path given to open Sqlite DB cannot be opened.");
     }
@@ -42,7 +42,7 @@ void SqliteWrapper::CreateTable(std::string table_name, std::vector<std::pair<st
     int exit = sqlite3_exec(this->conx, create_table.c_str(), NULL, 0, &messageError);
 
     if (exit != SQLITE_OK) {
-        std::cerr << "Error Creating Table" << std::endl;
+        std::cerr << "Error Creating Table " << sqlite3_errmsg(this->conx) << std::endl;
         sqlite3_free(messageError);
     }
 
